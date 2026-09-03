@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="oftalmoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="irisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  
+  <!-- Background Rounded Canvas -->
+  <rect width="512" height="512" rx="112" fill="url(#oftalmoGrad)"/>
+  
+  <!-- Eye Outer Contour (Sclera) -->
+  <g filter="url(#shadow)">
+    <path d="M256 140 C150 140 70 216 48 256 C70 296 150 372 256 372 C362 372 442 296 464 256 C442 216 362 140 256 140 Z" fill="#ffffff"/>
+  </g>
+  
+  <!-- Iris -->
+  <circle cx="256" cy="256" r="74" fill="url(#irisGrad)"/>
+  
+  <!-- Pupil -->
+  <circle cx="256" cy="256" r="42" fill="#0f172a"/>
+  
+  <!-- Eye Drop Indicator (Time / Dilatação) -->
+  <path d="M256 180 C264 195 276 215 276 226 C276 237 267 246 256 246 C245 246 236 237 236 226 C236 215 248 195 256 180 Z" fill="#38bdf8" opacity="0.9"/>
+  
+  <!-- Light Reflection -->
+  <circle cx="242" cy="242" r="12" fill="#ffffff" opacity="0.9"/>
+  <circle cx="268" cy="268" r="6" fill="#ffffff" opacity="0.7"/>
+  
+  <!-- Clock / Timer Arc Accent -->
+  <path d="M 370 200 A 140 140 0 0 1 370 312" fill="none" stroke="#38bdf8" stroke-width="8" stroke-linecap="round" stroke-dasharray="12 8"/>
+</svg>

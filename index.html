@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OftalmoFlow - Fluxo de Pacientes</title>
+  <meta name="description" content="Sistema ultracompacto para controle de fluxo e dilatação de pacientes em clínicas oftalmológicas.">
+  
+  <!-- PWA Settings -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0d9488">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="OftalmoFlow">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+            }
+          },
+          fontFamily: {
+            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome CDN para Ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+  <style>
+    /* Otimização de clique em telas touch */
+    button, input, select {
+      touch-action: manipulation;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-800 antialiased flex flex-col font-sans select-none md:select-auto">
+
+  <!-- ========================================== -->
+  <!-- HEADER LIMPO & FIXO                        -->
+  <!-- ========================================== -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-5xl mx-auto px-3 sm:px-6">
+      <div class="flex items-center justify-between h-14">
+        
+        <!-- Logo e Título Simplificado -->
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white shadow-sm shrink-0">
+            <i class="fa-solid fa-eye text-sm"></i>
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-none">OftalmoFlow</h1>
+            <span class="text-[11px] text-slate-500 font-medium">Fluxo de Pacientes</span>
+          </div>
+        </div>
+
+        <!-- Ações do Header -->
+        <div class="flex items-center gap-2">
+          <!-- Botão Instalar PWA (quando disponível) -->
+          <button id="btnInstallPwa" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold shadow-sm transition active:scale-95">
+            <i class="fa-solid fa-download text-xs"></i>
+            <span class="hidden sm:inline">Instalar</span>
+          </button>
+
+          <!-- Botão "+ Novo Paciente" BEM VISÍVEL -->
+          <button id="btnOpenModalNovo" class="flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs sm:text-sm shadow-sm transition active:scale-95">
+            <i class="fa-solid fa-plus text-xs sm:text-sm"></i>
+            <span>Novo Paciente</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- LISTAGEM COMPACTA DE PACIENTES             -->
+  <!-- ========================================== -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col gap-2.5">
+    
+    <!-- Contadores rápidos informativos -->
+    <div class="flex items-center justify-between px-1 text-xs text-slate-500">
+      <div class="flex items-center gap-3">
+        <span class="font-semibold text-slate-700 flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-brand-500"></span> Em atendimento: <strong id="countAtivos" class="text-slate-900">0</strong>
+        </span>
+        <span class="text-slate-400">|</span>
+        <span class="text-slate-500 flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span> Finalizados: <strong id="countFinalizados" class="text-slate-700">0</strong>
+        </span>
+      </div>
+      <button id="btnLimparFinalizados" class="text-slate-400 hover:text-rose-600 text-[11px] font-medium transition flex items-center gap-1">
+        <i class="fa-regular fa-trash-can"></i> Limpar Concluídos
+      </button>
+    </div>
+
+    <!-- LISTA ÚNICA E COMPACTA (Cards finos) -->
+    <div id="containerPacientes" class="flex flex-col gap-2 pb-16">
+      <!-- Injetado dinamicamente via renderPacientes() -->
+    </div>
+
+    <!-- ESTADO VAZIO -->
+    <div id="emptyState" class="hidden flex-col items-center justify-center py-16 px-4 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+      <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xl mb-2">
+        <i class="fa-regular fa-folder-open"></i>
+      </div>
+      <h3 class="text-sm font-bold text-slate-800">Nenhum paciente cadastrado</h3>
+      <p class="text-xs text-slate-500 mt-1 max-w-xs">Toque no botão "+ Novo Paciente" para iniciar um atendimento.</p>
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: NOVO PACIENTE (SIMPLIFICADO)        -->
+  <!-- ========================================== -->
+  <div id="modalNovoPaciente" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 my-auto animate-in fade-in zoom-in duration-150">
+      
+      <div class="bg-brand-600 px-4 py-3 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-sm"></i>
+          <h2 class="text-sm font-bold">Novo Paciente</h2>
+        </div>
+        <button id="btnCloseModalNovo" class="text-white/80 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <form id="formNovoPaciente" class="p-4 flex flex-col gap-3 text-xs sm:text-sm">
+        
+        <!-- Nome -->
+        <div>
+          <label for="novoNome" class="block font-semibold text-slate-700 mb-1">Nome do Paciente *</label>
+          <input type="text" id="novoNome" required placeholder="Ex: Maria de Souza" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <!-- Idade -->
+        <div>
+          <label for="novoIdade" class="block font-semibold text-slate-700 mb-1">Idade (anos) *</label>
+          <input type="number" id="novoIdade" min="0" max="130" required placeholder="Ex: 52" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <!-- Tipo de Atendimento -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Tipo de Atendimento *</label>
+          <div class="grid grid-cols-3 gap-2">
+            
+            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 cursor-pointer text-center" id="labelTipoConsulta">
+              <input type="radio" name="novoTipo" value="consulta" checked class="sr-only" onchange="window.toggleTipoNovo()">
+              <i class="fa-solid fa-user-doctor text-brand-600 text-sm mb-0.5"></i>
+              <span class="font-bold text-slate-900 text-xs">Consulta</span>
+              <span class="text-[10px] text-slate-500">Pré-Exame</span>
+            </label>
+
+            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-white cursor-pointer text-center" id="labelTipoExame">
+              <input type="radio" name="novoTipo" value="exame" class="sr-only" onchange="window.toggleTipoNovo()">
+              <i class="fa-solid fa-microscope text-amber-500 text-sm mb-0.5"></i>
+              <span class="font-bold text-slate-900 text-xs">Exame</span>
+              <span class="text-[10px] text-slate-500">Diagnóstico</span>
+            </label>
+
+            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-white cursor-pointer text-center" id="labelTipoRetorno">
+              <input type="radio" name="novoTipo" value="retorno" class="sr-only" onchange="window.toggleTipoNovo()">
+              <i class="fa-solid fa-stethoscope text-indigo-500 text-sm mb-0.5"></i>
+              <span class="font-bold text-slate-900 text-xs">Retorno</span>
+              <span class="text-[10px] text-slate-500">Médico</span>
+            </label>
+
+          </div>
+        </div>
+
+        <!-- Seletor opcional para Exames -->
+        <div id="boxOpcaoExame" class="hidden bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex flex-col gap-1">
+          <label for="novoExameNome" class="font-semibold text-amber-900 text-xs">Exame a ser realizado:</label>
+          <select id="novoExameNome" class="w-full px-2.5 py-1.5 rounded-lg border border-amber-300 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-500">
+            <option value="OCT (Tomografia)">OCT (Tomografia de Coerência)</option>
+            <option value="Campo Visual">Campo Visual Computadorizado</option>
+            <option value="Topografia Corneana">Topografia Corneana</option>
+            <option value="Mapeamento de Retina">Mapeamento de Retina</option>
+            <option value="Paquimetria">Paquimetria Ultrassônica</option>
+            <option value="Biometria">Biometria Ultrassônica</option>
+            <option value="Outro Exame">Outro Exame Diagnóstico</option>
+          </select>
+        </div>
+
+        <!-- Botões -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 mt-1">
+          <button type="button" id="btnCancelModalNovo" class="px-3 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-sm flex items-center gap-1">
+            <i class="fa-solid fa-check"></i> Iniciar Atendimento
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: EDITAR PACIENTE & TONOMETRIA        -->
+  <!-- ========================================== -->
+  <div id="modalEditarPaciente" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 my-auto">
+      
+      <div class="bg-slate-800 px-4 py-3 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-user-pen text-sm"></i>
+          <h2 class="text-sm font-bold">Editar Paciente</h2>
+        </div>
+        <button id="btnCloseModalEdit" class="text-white/80 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <form id="formEditarPaciente" class="p-4 flex flex-col gap-3 text-xs sm:text-sm">
+        <input type="hidden" id="editPacienteId">
+
+        <div class="grid grid-cols-3 gap-2">
+          <div class="col-span-2">
+            <label for="editNome" class="block font-semibold text-slate-700 mb-1">Nome Completo</label>
+            <input type="text" id="editNome" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-1 focus:ring-brand-500 focus:outline-none">
+          </div>
+          <div>
+            <label for="editIdade" class="block font-semibold text-slate-700 mb-1">Idade</label>
+            <input type="number" id="editIdade" min="0" max="130" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-1 focus:ring-brand-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Pressão Ocular (Tonometria) -->
+        <div class="bg-sky-50 p-3 rounded-xl border border-sky-200 flex flex-col gap-1.5">
+          <label class="font-bold text-sky-900 text-xs flex items-center justify-between">
+            <span><i class="fa-solid fa-gauge-high text-sky-600 mr-1"></i> Pressão Ocular (Tonometria):</span>
+            <span class="text-[10px] text-sky-700 font-normal">mmHg</span>
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" step="0.5" id="editTonometriaOD" placeholder="OD (Ex: 14)" class="w-full px-2.5 py-1.5 rounded-lg border border-sky-300 bg-white font-bold text-slate-800 text-xs focus:outline-none">
+            <input type="number" step="0.5" id="editTonometriaOE" placeholder="OE (Ex: 15)" class="w-full px-2.5 py-1.5 rounded-lg border border-sky-300 bg-white font-bold text-slate-800 text-xs focus:outline-none">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <button type="button" id="btnExcluirPaciente" class="text-rose-600 hover:text-rose-700 font-semibold text-xs py-1 flex items-center gap-1">
+            <i class="fa-regular fa-trash-can"></i> Excluir
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btnCancelModalEdit" class="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold">
+              Cancelar
+            </button>
+            <button type="submit" class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold">
+              Salvar
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL RÁPIDO: FINALIZAR TONOMETRIA         -->
+  <!-- ========================================== -->
+  <div id="modalTonometriaRapida" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-100">
+      <div class="bg-emerald-600 px-4 py-3 text-white">
+        <h2 class="text-sm font-bold flex items-center gap-1.5"><i class="fa-solid fa-clipboard-check"></i> Finalizar Dilatação</h2>
+        <p class="text-[11px] text-emerald-100" id="rapidaPacienteNome"></p>
+      </div>
+
+      <form id="formTonometriaRapida" class="p-4 flex flex-col gap-3 text-xs sm:text-sm">
+        <input type="hidden" id="rapidaPacienteId">
+        <label class="block font-semibold text-slate-700">Informe a Pressão Ocular (opcional):</label>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <input type="number" step="0.5" id="rapidaOD" placeholder="OD (mmHg)" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500">
+          <input type="number" step="0.5" id="rapidaOE" placeholder="OE (mmHg)" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" id="btnCancelRapida" class="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold">
+            Voltar
+          </button>
+          <button type="submit" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1">
+            <i class="fa-solid fa-check"></i> Finalizar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST RÁPIDO -->
+  <div id="toastNotification" class="fixed bottom-3 right-3 z-50 transform translate-y-16 opacity-0 transition-all duration-200 pointer-events-none flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-md text-xs font-semibold bg-slate-900 text-white"></div>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT PURO (STATE-DRIVEN & ABSOLUTE TIME) -->
+  <!-- ========================================== -->
+  <script>
+    /**
+     * OFTALMOFLOW - SISTEMA CLÍNICO MINIMALISTA (CARDS FINOS)
+     * 
+     * PRINCÍPIO DA PRECISÃO DE TEMPO ABSOLUTA:
+     * - Nunca utilizamos contadores incrementais (contador++).
+     * - Gravamos o timestamp exato (`Date.now()`) no momento do clique (1ª gota ou 2ª gota).
+     * - O `setInterval` calcula `Date.now() - timestamp`.
+     * - Ao atingir ou passar de 10 minutos (600.000 ms), o número do cronômetro fica vermelho
+     *   e pulsa suavemente no próprio card como notificação visual clara.
+     */
+
+    const STORAGE_KEY = 'oftalmo_pacientes_v2';
+    const TEMPO_LIMITE_MS = 10 * 60 * 1000; // 10 Minutos
+
+    const state = {
+      pacientes: [],
+      deferredPrompt: null
+    };
+
+    // 1. LOCALSTORAGE & ESTADO
+    function carregarPacientes() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          state.pacientes = JSON.parse(raw);
+        } else {
+          state.pacientes = getPacientesIniciais();
+          salvarPacientes();
+        }
+      } catch (err) {
+        state.pacientes = [];
+      }
+    }
+
+    function salvarPacientes() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.pacientes));
+      } catch (err) {
+        console.error('Erro ao gravar localStorage:', err);
+      }
+      renderPacientes();
+      atualizarContadores();
+    }
+
+    function getPacientesIniciais() {
+      const agora = Date.now();
+      return [
+        {
+          id: 'p-1',
+          nome: 'Carlos Eduardo Menezes',
+          idade: 54,
+          tipo: 'consulta',
+          etapaConsulta: 1, // Aguardando Consulta / Pré-exame (não pingou ainda)
+          status: 'atendimento',
+          timestamp_criacao: agora - (12 * 60 * 1000),
+          timestamp_gota1: null,
+          timestamp_gota2: null,
+          timestamp_finalizado: null,
+          pressaoOcularOD: '',
+          pressaoOcularOE: ''
+        },
+        {
+          id: 'p-2',
+          nome: 'Helena Beatriz Martins',
+          idade: 68,
+          tipo: 'consulta',
+          etapaConsulta: 3, // Pós 2ª gota (pingou há 11 min -> Cronômetro vermelho)
+          status: 'atendimento',
+          timestamp_criacao: agora - (25 * 60 * 1000),
+          timestamp_gota1: agora - (22 * 60 * 1000),
+          timestamp_gota2: agora - (11 * 60 * 1000),
+          timestamp_finalizado: null,
+          pressaoOcularOD: '14',
+          pressaoOcularOE: '15'
+        },
+        {
+          id: 'p-3',
+          nome: 'Roberto Alves Santos',
+          idade: 42,
+          tipo: 'exame',
+          tipoExame: 'OCT (Tomografia)',
+          etapaExame: 2,
+          status: 'atendimento',
+          timestamp_criacao: agora - (14 * 60 * 1000),
+          timestamp_gota1: null,
+          timestamp_gota2: null,
+          timestamp_finalizado: null,
+          pressaoOcularOD: '',
+          pressaoOcularOE: ''
+        },
+        {
+          id: 'p-4',
+          nome: 'Ana Clara Albuquerque',
+          idade: 29,
+          tipo: 'consulta',
+          etapaConsulta: 4,
+          status: 'finalizado',
+          timestamp_criacao: agora - (45 * 60 * 1000),
+          timestamp_gota1: agora - (40 * 60 * 1000),
+          timestamp_gota2: agora - (30 * 60 * 1000),
+          timestamp_finalizado: agora - (10 * 60 * 1000),
+          pressaoOcularOD: '13',
+          pressaoOcularOE: '14'
+        }
+      ];
+    }
+
+    // 2. CÁLCULO DE TEMPO
+    function calcularTempoDecorrido(timestamp) {
+      if (!timestamp) return { texto: '00:00', totalSegundos: 0, passouLimite: false };
+      const diffMs = Math.max(0, Date.now() - timestamp);
+      const totalSegundos = Math.floor(diffMs / 1000);
+      const minutos = Math.floor(totalSegundos / 60);
+      const segundos = totalSegundos % 60;
+      const texto = `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+      const passouLimite = diffMs >= TEMPO_LIMITE_MS;
+      return { texto, totalSegundos, passouLimite, diffMs };
+    }
+
+    // 3. RENDERIZAÇÃO ULTRACOMPACTA DOS CARDS (SEM REFRESH)
+    function renderPacientes() {
+      const container = document.getElementById('containerPacientes');
+      const emptyState = document.getElementById('emptyState');
+      if (!container) return;
+
+      if (state.pacientes.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        emptyState.classList.add('flex');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      emptyState.classList.remove('flex');
+
+      // Ordenar: Em atendimento primeiro, depois finalizados
+      const ordenados = [...state.pacientes].sort((a, b) => {
+        if (a.status === 'atendimento' && b.status === 'finalizado') return -1;
+        if (a.status === 'finalizado' && b.status === 'atendimento') return 1;
+        return (b.timestamp_criacao || 0) - (a.timestamp_criacao || 0);
+      });
+
+      container.innerHTML = ordenados.map(p => criarCardFinoHTML(p)).join('');
+      vincularEventos();
+    }
+
+    /**
+     * Card Fino e Otimizado:
+     * - Linha Superior: Nome (negrito) + Idade | Badge Tipo + Botão Editar (lápis)
+     * - Linha Inferior: Etapa do fluxo | Relógio (com destaque vermelho ao expirar) + Botão de avançar pequeno lado a lado
+     */
+    function criarCardFinoHTML(p) {
+      const isFinalizado = p.status === 'finalizado';
+      const isConsulta = p.tipo === 'consulta';
+      const isExame = p.tipo === 'exame';
+
+      // Badge do Tipo
+      let badgeTipo = '';
+      if (isConsulta) {
+        badgeTipo = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-100 text-sky-800 border border-sky-200">Consulta</span>`;
+      } else if (isExame) {
+        badgeTipo = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">${p.tipoExame || 'Exame'}</span>`;
+      } else {
+        badgeTipo = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">Retorno</span>`;
+      }
+
+      // Estilização do Card: Branco/Vivo para Atendimento, Cinza Mudo para Finalizado
+      const cardBg = isFinalizado 
+        ? 'bg-slate-100/90 border-slate-200 text-slate-500 opacity-80' 
+        : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:border-slate-300';
+
+      // Lógica de Etapa & Cronômetro
+      let etapaLabel = '';
+      let timerTimestamp = null;
+      let botaoAvançarHTML = '';
+      let pioInfo = '';
+
+      if (p.pressaoOcularOD || p.pressaoOcularOE) {
+        pioInfo = `<span class="text-[10px] font-mono font-bold bg-slate-200/70 text-slate-700 px-1.5 py-0.5 rounded">PIO ${p.pressaoOcularOD || '-'}/${p.pressaoOcularOE || '-'}</span>`;
+      }
+
+      if (isConsulta) {
+        const etapa = p.etapaConsulta || 1;
+        if (etapa === 1) {
+          etapaLabel = 'Consulta / Pré-exame';
+          timerTimestamp = p.timestamp_criacao; // Tempo total desde o cadastro
+        } else if (etapa === 2) {
+          etapaLabel = '1ª Gota Aplicada (Aguardando)';
+          timerTimestamp = p.timestamp_gota1; // Cronômetro da 1ª dilatação
+        } else if (etapa === 3) {
+          etapaLabel = '2ª Gota Aplicada (Dilatando)';
+          timerTimestamp = p.timestamp_gota2 || p.timestamp_gota1; // Cronômetro da 2ª gota (onde mede os 10 min)
+        } else {
+          etapaLabel = 'Finalizado';
+          timerTimestamp = null;
+        }
+
+        if (!isFinalizado) {
+          if (etapa === 1) {
+            botaoAvançarHTML = `
+              <button data-action="pingar-gota1" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shadow-sm transition active:scale-95" title="Aplicar 1ª Gota (Iniciar Dilatação)">
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </button>`;
+          } else if (etapa === 2) {
+            botaoAvançarHTML = `
+              <button data-action="pingar-gota2" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shadow-sm transition active:scale-95" title="Aplicar 2ª Gota">
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </button>`;
+          } else if (etapa === 3) {
+            botaoAvançarHTML = `
+              <button data-action="finalizar-consulta" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-sm transition active:scale-95" title="Finalizar Consulta">
+                <i class="fa-solid fa-check text-xs"></i>
+              </button>`;
+          }
+        }
+      } else if (isExame) {
+        const etapa = p.etapaExame || 1;
+        etapaLabel = etapa === 1 ? 'Aguardando Exame' : (etapa === 2 ? 'Em Realização' : 'Concluído');
+        timerTimestamp = p.timestamp_criacao;
+
+        if (!isFinalizado) {
+          botaoAvançarHTML = etapa === 1
+            ? `<button data-action="avancar-exame" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center shadow-sm transition active:scale-95" title="Chamar para exame"><i class="fa-solid fa-arrow-right text-xs"></i></button>`
+            : `<button data-action="finalizar-exame" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-sm transition active:scale-95" title="Concluir exame"><i class="fa-solid fa-check text-xs"></i></button>`;
+        }
+      } else {
+        etapaLabel = isFinalizado ? 'Retorno Concluído' : 'Aguardando Médico';
+        timerTimestamp = p.timestamp_criacao;
+
+        if (!isFinalizado) {
+          botaoAvançarHTML = `<button data-action="finalizar-retorno" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-sm transition active:scale-95" title="Finalizar retorno"><i class="fa-solid fa-check text-xs"></i></button>`;
+        }
+      }
+
+      // Se estiver finalizado, mostra botão pequeno de reabrir
+      if (isFinalizado) {
+        botaoAvançarHTML = `
+          <button data-action="reabrir" data-id="${p.id}" class="btn-avancar w-8 h-8 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition active:scale-95" title="Reabrir atendimento">
+            <i class="fa-solid fa-rotate-left text-xs"></i>
+          </button>`;
+      }
+
+      // Cálculo do tempo e cor vermelha se atingiu/passou de 10 min
+      const tempo = calcularTempoDecorrido(timerTimestamp);
+      
+      // Regra visual: Se passou de 10 min durante a dilatação (etapas 2 ou 3), o número fica vermelho
+      const isDilatando = isConsulta && (p.etapaConsulta === 2 || p.etapaConsulta === 3);
+      const timerColorClass = (!isFinalizado && isDilatando && tempo.passouLimite)
+        ? 'text-rose-600 font-extrabold animate-pulse'
+        : (isFinalizado ? 'text-slate-400' : 'text-slate-800 font-bold');
+
+      const tempoExibicao = isFinalizado ? '--:--' : tempo.texto;
+
+      return `
+        <div class="rounded-xl border p-2.5 sm:px-3.5 sm:py-2.5 transition-all ${cardBg}" id="card-${p.id}">
+          
+          <!-- LINHA SUPERIOR: NOME, IDADE E DIREITA: TIPO + EDITAR -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs sm:text-sm font-bold truncate ${isFinalizado ? 'line-through text-slate-500' : 'text-slate-900'}">${p.nome}</span>
+              <span class="text-[11px] text-slate-400 font-normal shrink-0">• ${p.idade}a</span>
+              ${pioInfo}
+            </div>
+            
+            <div class="flex items-center gap-1.5 shrink-0">
+              ${badgeTipo}
+              <button data-action="editar" data-id="${p.id}" class="btn-editar text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-100 transition" title="Editar dados e pressão">
+                <i class="fa-solid fa-pen-to-square text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- LINHA INFERIOR: ETAPA + DIREITA: CRONÔMETRO AO LADO DO BOTÃO DE AVANÇAR -->
+          <div class="flex items-center justify-between mt-1 pt-1 border-t border-slate-100/60 text-xs">
+            
+            <!-- Etapa Atual -->
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="text-[11px] font-medium ${isFinalizado ? 'text-slate-400' : 'text-slate-600'} truncate">
+                ${etapaLabel}
+              </span>
+            </div>
+
+            <!-- Cronômetro e Botão Pequeno lado a lado -->
+            <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center gap-1 font-mono text-xs sm:text-sm ${timerColorClass}">
+                <i class="fa-regular fa-clock text-[11px] opacity-70"></i>
+                <span class="timer-display" data-timestamp="${timerTimestamp || ''}" data-dilatando="${isDilatando ? 'true' : 'false'}">${tempoExibicao}</span>
+              </div>
+              ${botaoAvançarHTML}
+            </div>
+
+          </div>
+
+        </div>
+      `;
+    }
+
+    // 4. INTERVALO DO CRONÔMETRO (ATUALIZA O TEXTO E CLASSE VERMELHA)
+    function iniciarLoopCronometro() {
+      setInterval(() => {
+        const displays = document.querySelectorAll('.timer-display');
+        displays.forEach(el => {
+          const timestamp = parseInt(el.getAttribute('data-timestamp'), 10);
+          const isDilatando = el.getAttribute('data-dilatando') === 'true';
+          if (timestamp && !isNaN(timestamp)) {
+            const tempo = calcularTempoDecorrido(timestamp);
+            if (el.textContent !== tempo.texto) {
+              el.textContent = tempo.texto;
+            }
+            // Se passar de 10 min durante a dilatação, aplica classe vermelha no elemento pai
+            if (isDilatando && tempo.passouLimite && !el.parentElement.classList.contains('text-rose-600')) {
+              el.parentElement.classList.remove('text-slate-800');
+              el.parentElement.classList.add('text-rose-600', 'font-extrabold', 'animate-pulse');
+            }
+          }
+        });
+      }, 1000);
+    }
+
+    // 5. EVENTOS DOS BOTÕES
+    function vincularEventos() {
+      document.querySelectorAll('.btn-avancar').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const action = btn.getAttribute('data-action');
+          executarAcao(id, action);
+        });
+      });
+
+      document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          abrirModalEditar(id);
+        });
+      });
+    }
+
+    function executarAcao(id, action) {
+      const p = state.pacientes.find(item => item.id === id);
+      if (!p) return;
+      const agora = Date.now();
+
+      if (action === 'pingar-gota1') {
+        p.etapaConsulta = 2;
+        p.timestamp_gota1 = agora;
+        salvarPacientes();
+        mostrarToast(`1ª Gota aplicada em ${p.nome}`);
+      } else if (action === 'pingar-gota2') {
+        p.etapaConsulta = 3;
+        p.timestamp_gota2 = agora;
+        salvarPacientes();
+        mostrarToast(`2ª Gota aplicada em ${p.nome}`);
+      } else if (action === 'finalizar-consulta') {
+        if (!p.pressaoOcularOD && !p.pressaoOcularOE) {
+          abrirModalTonometriaRapida(p);
+        } else {
+          p.etapaConsulta = 4;
+          p.status = 'finalizado';
+          p.timestamp_finalizado = agora;
+          salvarPacientes();
+          mostrarToast(`Atendimento de ${p.nome} finalizado`);
+        }
+      } else if (action === 'avancar-exame') {
+        p.etapaExame = 2;
+        salvarPacientes();
+        mostrarToast(`${p.nome} em exame`);
+      } else if (action === 'finalizar-exame') {
+        p.etapaExame = 3;
+        p.status = 'finalizado';
+        p.timestamp_finalizado = agora;
+        salvarPacientes();
+        mostrarToast(`Exame de ${p.nome} concluído`);
+      } else if (action === 'finalizar-retorno') {
+        p.status = 'finalizado';
+        p.timestamp_finalizado = agora;
+        salvarPacientes();
+        mostrarToast(`Retorno finalizado`);
+      } else if (action === 'reabrir') {
+        p.status = 'atendimento';
+        if (p.tipo === 'consulta' && p.etapaConsulta === 4) p.etapaConsulta = 3;
+        salvarPacientes();
+        mostrarToast(`${p.nome} reaberto`);
+      }
+    }
+
+    // 6. FORMULÁRIO DE NOVO PACIENTE (SIMPLIFICADO)
+    window.toggleTipoNovo = function() {
+      const tipo = document.querySelector('input[name="novoTipo"]:checked')?.value || 'consulta';
+      const boxExame = document.getElementById('boxOpcaoExame');
+      const lConsulta = document.getElementById('labelTipoConsulta');
+      const lExame = document.getElementById('labelTipoExame');
+      const lRetorno = document.getElementById('labelTipoRetorno');
+
+      [lConsulta, lExame, lRetorno].forEach(l => {
+        l.className = 'flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-white cursor-pointer text-center';
+      });
+
+      if (tipo === 'consulta') {
+        lConsulta.className = 'flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 cursor-pointer text-center';
+        boxExame.classList.add('hidden');
+      } else if (tipo === 'exame') {
+        lExame.className = 'flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-amber-500 bg-amber-50 cursor-pointer text-center';
+        boxExame.classList.remove('hidden');
+      } else {
+        lRetorno.className = 'flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-indigo-500 bg-indigo-50 cursor-pointer text-center';
+        boxExame.classList.add('hidden');
+      }
+    };
+
+    const modalNovo = document.getElementById('modalNovoPaciente');
+    document.getElementById('btnOpenModalNovo').addEventListener('click', () => {
+      document.getElementById('formNovoPaciente').reset();
+      window.toggleTipoNovo();
+      modalNovo.classList.remove('hidden');
+      setTimeout(() => document.getElementById('novoNome').focus(), 50);
+    });
+
+    const fecharModalNovo = () => modalNovo.classList.add('hidden');
+    document.getElementById('btnCloseModalNovo').addEventListener('click', fecharModalNovo);
+    document.getElementById('btnCancelModalNovo').addEventListener('click', fecharModalNovo);
+
+    document.getElementById('formNovoPaciente').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('novoNome').value.trim();
+      const idade = parseInt(document.getElementById('novoIdade').value, 10);
+      const tipo = document.querySelector('input[name="novoTipo"]:checked')?.value || 'consulta';
+      const tipoExame = tipo === 'exame' ? document.getElementById('novoExameNome').value : '';
+
+      if (!nome || isNaN(idade)) return;
+      const agora = Date.now();
+
+      state.pacientes.unshift({
+        id: 'p-' + agora + '-' + Math.random().toString(36).substring(2, 6),
+        nome,
+        idade,
+        tipo,
+        tipoExame,
+        etapaConsulta: 1,
+        etapaExame: 1,
+        status: 'atendimento',
+        timestamp_criacao: agora,
+        timestamp_gota1: null,
+        timestamp_gota2: null,
+        timestamp_finalizado: null,
+        pressaoOcularOD: '',
+        pressaoOcularOE: ''
+      });
+
+      salvarPacientes();
+      fecharModalNovo();
+      mostrarToast(`${nome} adicionado`);
+    });
+
+    // 7. MODAL DE EDIÇÃO
+    const modalEdit = document.getElementById('modalEditarPaciente');
+    function abrirModalEditar(id) {
+      const p = state.pacientes.find(item => item.id === id);
+      if (!p) return;
+      document.getElementById('editPacienteId').value = p.id;
+      document.getElementById('editNome').value = p.nome;
+      document.getElementById('editIdade').value = p.idade;
+      document.getElementById('editTonometriaOD').value = p.pressaoOcularOD || '';
+      document.getElementById('editTonometriaOE').value = p.pressaoOcularOE || '';
+      modalEdit.classList.remove('hidden');
+    }
+
+    const fecharModalEdit = () => modalEdit.classList.add('hidden');
+    document.getElementById('btnCloseModalEdit').addEventListener('click', fecharModalEdit);
+    document.getElementById('btnCancelModalEdit').addEventListener('click', fecharModalEdit);
+
+    document.getElementById('formEditarPaciente').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editPacienteId').value;
+      const p = state.pacientes.find(item => item.id === id);
+      if (!p) return;
+
+      p.nome = document.getElementById('editNome').value.trim();
+      p.idade = parseInt(document.getElementById('editIdade').value, 10);
+      p.pressaoOcularOD = document.getElementById('editTonometriaOD').value.trim();
+      p.pressaoOcularOE = document.getElementById('editTonometriaOE').value.trim();
+
+      salvarPacientes();
+      fecharModalEdit();
+      mostrarToast('Registro atualizado');
+    });
+
+    document.getElementById('btnExcluirPaciente').addEventListener('click', () => {
+      const id = document.getElementById('editPacienteId').value;
+      const p = state.pacientes.find(item => item.id === id);
+      if (!p) return;
+      if (confirm(`Remover "${p.nome}"?`)) {
+        state.pacientes = state.pacientes.filter(item => item.id !== id);
+        salvarPacientes();
+        fecharModalEdit();
+        mostrarToast('Paciente removido');
+      }
+    });
+
+    // 8. MODAL TONOMETRIA RÁPIDA
+    const modalRapida = document.getElementById('modalTonometriaRapida');
+    function abrirModalTonometriaRapida(paciente) {
+      document.getElementById('rapidaPacienteId').value = paciente.id;
+      document.getElementById('rapidaPacienteNome').textContent = `Paciente: ${paciente.nome}`;
+      document.getElementById('rapidaOD').value = paciente.pressaoOcularOD || '';
+      document.getElementById('rapidaOE').value = paciente.pressaoOcularOE || '';
+      modalRapida.classList.remove('hidden');
+      setTimeout(() => document.getElementById('rapidaOD').focus(), 50);
+    }
+
+    document.getElementById('btnCancelRapida').addEventListener('click', () => modalRapida.classList.add('hidden'));
+
+    document.getElementById('formTonometriaRapida').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('rapidaPacienteId').value;
+      const p = state.pacientes.find(item => item.id === id);
+      if (!p) return;
+
+      p.pressaoOcularOD = document.getElementById('rapidaOD').value.trim();
+      p.pressaoOcularOE = document.getElementById('rapidaOE').value.trim();
+      p.etapaConsulta = 4;
+      p.status = 'finalizado';
+      p.timestamp_finalizado = Date.now();
+
+      salvarPacientes();
+      modalRapida.classList.add('hidden');
+      mostrarToast(`Atendimento de ${p.nome} finalizado`);
+    });
+
+    // 9. LIMPAR FINALIZADOS
+    document.getElementById('btnLimparFinalizados').addEventListener('click', () => {
+      const qtd = state.pacientes.filter(p => p.status === 'finalizado').length;
+      if (qtd && confirm(`Limpar ${qtd} atendimentos finalizados?`)) {
+        state.pacientes = state.pacientes.filter(p => p.status !== 'finalizado');
+        salvarPacientes();
+        mostrarToast('Finalizados limpos');
+      }
+    });
+
+    function atualizarContadores() {
+      document.getElementById('countAtivos').textContent = state.pacientes.filter(p => p.status === 'atendimento').length;
+      document.getElementById('countFinalizados').textContent = state.pacientes.filter(p => p.status === 'finalizado').length;
+    }
+
+    // 10. TOAST
+    let toastTimer = null;
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      if (!toast) return;
+      clearTimeout(toastTimer);
+      toast.innerHTML = `<i class="fa-solid fa-circle-check text-brand-400 text-xs"></i> <span>${msg}</span>`;
+      toast.classList.remove('opacity-0', 'translate-y-16');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-16');
+      }, 2500);
+    }
+
+    // 11. REGISTRO SERVICE WORKER & PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.warn(err));
+      });
+    }
+
+    const btnInstallPwa = document.getElementById('btnInstallPwa');
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      state.deferredPrompt = e;
+      btnInstallPwa.classList.remove('hidden');
+      btnInstallPwa.classList.add('flex');
+    });
+
+    btnInstallPwa.addEventListener('click', async () => {
+      if (!state.deferredPrompt) return;
+      state.deferredPrompt.prompt();
+      const { outcome } = await state.deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        btnInstallPwa.classList.add('hidden');
+      }
+      state.deferredPrompt = null;
+    });
+
+    // INICIALIZAÇÃO
+    document.addEventListener('DOMContentLoaded', () => {
+      carregarPacientes();
+      iniciarLoopCronometro();
+    });
+  </script>
+</body>
+</html>

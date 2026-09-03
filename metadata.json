@@ -1,0 +1,6 @@
+{
+  "name": "OftalmoFlow PWA",
+  "description": "Sistema de controle de fluxo de atendimento e tempo de dilatação para clínicas oftalmológicas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
